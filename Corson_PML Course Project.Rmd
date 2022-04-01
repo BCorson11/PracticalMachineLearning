@@ -1,0 +1,75 @@
+---
+title: "Practical Machine Learning Assignment"
+author: "BCorson11"
+date: "3/25/2022"
+output: 
+        html_document:
+                keep_md: yes
+                pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Executive Summary
+
+One thing that people regularly do is quantify how  much of a particular activity they do, but they rarely quantify how well they do it.  Below is analysis on predicting how an individual performed an activity (correctly or incorrectly).
+
+
+# Data Loading
+
+```{r Data_Loading, message = FALSE, results='hide'}
+setwd("C:/Users/Corson/Desktop/Coursera/PML")
+library(caret)
+library(kernlab)
+library(dplyr)
+library(tidyverse)
+library(earth)
+
+test <- read.csv("pml-testing.csv")
+train <- read.csv("pml-training.csv")
+train$classe <- as.factor(train$classe)
+
+seltrain <- train %>% select(starts_with(c("Roll", "Pitch", "Yaw", "Total_Acc",
+                                           "gyros", "accel", "magnet", "classe"))) 
+seltest <- test %>% select(starts_with(c("Roll", "Pitch", "Yaw", "Total_Acc",
+                                           "gyros", "accel", "magnet", "problem_id")))
+
+##Building control and validation sets for K-Fold Cross-Validation.
+set.seed(125)
+train_control <- trainControl(method = "cv",
+                              number = 10)
+```
+
+# Model Creation
+
+```{r Model_Creation, message = FALSE}
+#prComp <- prcomp(seltrain[,-53])
+
+preProc <- preProcess(seltrain[,-53]+1, method = "pca")
+trainPC <- predict(preProc, seltrain[,-53]+1)
+trainPC$classe <- seltrain$classe
+
+###Can't do Linear Model because of output being factor
+modelFitPCGLM <- train(seltrain$classe ~ ., method = "glm", data = trainPC, 
+                    trControl = train_control)
+
+modelFitTreeCV <- train(classe ~., data = seltrain, method = "rpart", trControl = train_control)
+modelFitTree <- train(classe ~., data = seltrain, method = "rpart")
+modelFitTreePC_CV <- train(classe ~., data = trainPC, method = "rpart", trControl = train_control)
+
+#modelFitRF <- train(classe ~., method = "rf", data = seltrain)
+
+modelFitBoost <- train(classe ~ ., method = "gbm", data = seltrain, verbose = FALSE)
+modelFitPCBoost <- train(classe ~ ., method = "gbm", data = trainPC, verbose = FALSE)
+modelFitPCBoostCV <- train(classe ~., data = trainPC, method = "gbm", verbose = FALSE,
+                           trControl = train_control)
+modelFitBoostCV <- train(classe ~., data = seltrain, method = "gbm", verbose = FALSE,
+                           trControl = train_control)
+
+
+```
+# Cross Validation
+
+# Out of Sample Error
